@@ -85,14 +85,14 @@ def main(context):
             # Create a bone in edit mode
             bone = create_bone(armature, bone_name, bone_head, bone_tail)
             bone.parent = group_parent_bone
-            def_bones.append((bone_name, global_index))
+            def_bones.append(bone_name)
             global_index += 1
 
     bpy.ops.object.mode_set(mode='OBJECT')
     bpy.context.view_layer.objects.active = lattice
 
     # Add vertex groups and assign weights for each bone
-    for bone_name, vertex_index in def_bones:
+    for vertex_index, bone_name in enumerate(def_bones):
         print(f"vertex_index: '{vertex_index}', bone_name: '{bone_name}'.")
         vertex_group = lattice.vertex_groups.new(name=bone_name)
         vertex_group.add([vertex_index], 1.0, 'REPLACE')

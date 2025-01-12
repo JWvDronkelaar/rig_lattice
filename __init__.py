@@ -14,7 +14,7 @@
 import bpy
 import mathutils
 
-from .functions import setup_widgets
+from .functions import align_bone_roll, get_bone_tail, setup_widgets
 from .armature_functions import assign_bone_shape_to_list, create_bone
 
 
@@ -27,6 +27,9 @@ def main(context):
     wgt_square = "LAT_WGT_square"
     wgt_cube = "LAT_WGT_cube"
 
+    # TODO: turn into an option
+    align_with_lattice = True
+
     lattice = bpy.context.active_object
     lattice_name = lattice.name
     
@@ -36,6 +39,7 @@ def main(context):
     lat_point_count = len(lattice.data.points)
     lat_vertical_res = lattice.data.points_w
     lat_group_count = int(lat_point_count/lat_vertical_res)
+    lattice_matrix_world = lattice.matrix_world
 
     # Set armature to active object and go to edit mode
     bpy.context.view_layer.objects.active = armature
@@ -43,10 +47,15 @@ def main(context):
 
     # Create root bone at lattice origin
     bone_name = f"{bone_prefix}_root"
-    bone_head = lattice.location
-    bone_tail = bone_head + mathutils.Vector((0, bone_length * 3, 0)) # align bone with world axis
+    lattice_world_location = lattice_matrix_world @ lattice.location
+    root_offset = lattice.scale.z / 2
+    bone_head = lattice_world_location + (lattice_matrix_world @ mathutils.Vector((0, 0, -1))).normalized() * root_offset
+    bone_tail_offset = mathutils.Vector((0, bone_length * 3, 0))
+
+    bone_tail = get_bone_tail(align_with_lattice, lattice_matrix_world, bone_head, bone_tail_offset)
 
     root_bone = create_bone(armature, bone_name, bone_head, bone_tail)
+    align_bone_roll(align_with_lattice, lattice_matrix_world, root_bone)
     root_bone.use_deform = False
     root_bone_name = root_bone.name
 
@@ -62,14 +71,16 @@ def main(context):
         # Calculate group center
         for local_index in range(group_index, min(group_index + lat_group_count, lat_point_count)):
             local_point = lattice.data.points[local_index]
-            group_center += lattice.matrix_world @ local_point.co
+            group_center += lattice_matrix_world @ local_point.co
         group_center = group_center / lat_group_count
         
         bone_name = f"parent_{bone_prefix}_{group_index}"
         bone_head = group_center
-        bone_tail = bone_head + mathutils.Vector((0, bone_length * 2, 0)) # align bone with world axis
+        bone_tail_offset = mathutils.Vector((0, bone_length * 2, 0))
+        bone_tail = get_bone_tail(align_with_lattice, lattice_matrix_world, bone_head, bone_tail_offset)
 
         group_parent_bone = create_bone(armature, bone_name, bone_head, bone_tail)
+        align_bone_roll(align_with_lattice, lattice_matrix_world, group_parent_bone)
         parent_bones.append(group_parent_bone.name)
         group_parent_bone.use_deform = False
         group_parent_bone.parent = root_bone
@@ -80,10 +91,12 @@ def main(context):
             # Create a new bone for each vertex
             bone_name = f"{bone_prefix}_{global_index}"
             bone_head = lattice.matrix_world @ point.co
-            bone_tail = bone_head + mathutils.Vector((0, bone_length, 0)) # align bone with world axis
+            bone_tail_offset = mathutils.Vector((0, bone_length, 0))
+            bone_tail = get_bone_tail(align_with_lattice, lattice_matrix_world, bone_head, bone_tail_offset)
 
             # Create a bone in edit mode
             bone = create_bone(armature, bone_name, bone_head, bone_tail)
+            align_bone_roll(align_with_lattice, lattice_matrix_world, bone)
             bone.parent = group_parent_bone
             def_bones.append(bone_name)
             global_index += 1

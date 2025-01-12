@@ -1,4 +1,5 @@
 import bpy
+import mathutils
 from .widget_functions import create_cube_widget, create_sphere_widget, create_circle_widget, create_rectangle_widget
 
 
@@ -50,3 +51,15 @@ def setup_widgets():
     find_layer_collection(wgt_collection_name).exclude = True
     
     set_active_collection(initial_collection)
+
+
+def get_bone_tail(align_with_lattice, lattice_matrix_world, bone_head, bone_tail_offset):
+    if align_with_lattice:
+        return bone_head + lattice_matrix_world @ bone_tail_offset
+    else:
+        return bone_head + bone_tail_offset
+
+
+def align_bone_roll(align_with_lattice, lattice_matrix_world, bone):
+        if align_with_lattice:
+            bone.align_roll(lattice_matrix_world.to_quaternion() @ mathutils.Vector((0, 0, 1)))

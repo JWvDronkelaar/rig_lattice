@@ -14,7 +14,7 @@
 import bpy
 import mathutils
 
-from .functions import align_bone_roll, get_bone_tail, setup_widgets
+from .functions import align_bone_roll, assign_bone_to_collection, get_bone_tail, setup_bone_collections, setup_widgets
 from .armature_functions import assign_bone_shape_to_list, create_bone
 
 
@@ -117,6 +117,13 @@ def main(context):
     assign_bone_shape_to_list(armature, wgt_sphere, def_bones)
     assign_bone_shape_to_list(armature, wgt_square, parent_bones)
     assign_bone_shape_to_list(armature, wgt_cube, [root_bone_name,])
+
+    # Assign to collections
+    setup_bone_collections(armature, "my_lattice")
+
+    # assign bones to collections
+    for bone_name in def_bones:
+        assign_bone_to_collection(armature, bone_name, "DEF")
 
     # Add armature modifier to the lattice
     modifier = lattice.modifiers.new(name="Armature", type='ARMATURE')

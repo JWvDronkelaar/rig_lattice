@@ -53,6 +53,24 @@ def setup_widgets():
     set_active_collection(initial_collection)
 
 
+def setup_bone_collections(armature, lattice_collection_name):
+    collection_names = ["DEF", lattice_collection_name]
+
+    for collection_name in collection_names:
+        if not collection_name in [col.name for col in armature.data.collections]:
+            bone_collection = armature.data.collections.new(collection_name)
+
+
+def assign_bone_to_collection(armature, bone_name, collection_name):
+    current_mode = bpy.context.object.mode
+    bpy.ops.object.mode_set(mode='POSE')
+
+    pose_bone = armature.pose.bones[bone_name]
+    armature.data.collections[collection_name].assign(pose_bone)
+
+    bpy.ops.object.mode_set(mode=current_mode)
+
+
 def get_bone_tail(align_with_lattice, lattice_matrix_world, bone_head, bone_tail_offset):
     if align_with_lattice:
         return bone_head + lattice_matrix_world @ bone_tail_offset

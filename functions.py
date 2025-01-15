@@ -1,5 +1,7 @@
+
 import bpy
-import mathutils
+
+from .constants import ArmatureCollection
 from .widget_functions import create_cube_widget, create_sphere_widget, create_circle_widget, create_rectangle_widget
 
 
@@ -53,31 +55,54 @@ def setup_widgets():
     set_active_collection(initial_collection)
 
 
-def setup_bone_collections(armature, lattice_collection_name):
-    collection_names = ["DEF", lattice_collection_name]
+def setup_bone_collections(armature, custom_collection_names=None):
+    # Default bone collection names
+    collection_names = [collection.value for collection in ArmatureCollection]
+    if custom_collection_names:
+        collection_names.extend(custom_collection_names)    
 
     for collection_name in collection_names:
         if not collection_name in [col.name for col in armature.data.collections]:
             bone_collection = armature.data.collections.new(collection_name)
 
-
-def assign_bone_to_collection(armature, bone_name, collection_name):
-    current_mode = bpy.context.object.mode
-    bpy.ops.object.mode_set(mode='POSE')
-
-    pose_bone = armature.pose.bones[bone_name]
-    armature.data.collections[collection_name].assign(pose_bone)
-
-    bpy.ops.object.mode_set(mode=current_mode)
+        if collection_name == ArmatureCollection.DEFORM.value:
+            bone_collection.is_visible = False
 
 
-def get_bone_tail(align_with_lattice, lattice_matrix_world, bone_head, bone_tail_offset):
-    if align_with_lattice:
-        return bone_head + lattice_matrix_world @ bone_tail_offset
-    else:
-        return bone_head + bone_tail_offset
+class TemporaryObjectMode:
+    def __init__(self, object_name, mode):
+        self.object_name = object_name
+        self.mode = mode
+        self.original_object = None
+        self.original_mode = None
+        self.do_nothing = False
 
+    def __enter__(self):
+        # Store the original active object and mode
+        self.original_object = bpy.context.active_object
+        self.original_mode = bpy.context.mode
 
-def align_bone_roll(align_with_lattice, lattice_matrix_world, bone):
-        if align_with_lattice:
-            bone.align_roll(lattice_matrix_world.to_quaternion() @ mathutils.Vector((0, 0, 1)))
+        if self.original_mode.startswith('EDIT'):
+            self.original_mode = 'EDIT'
+
+        # Check if the current active object and mode already match the specified ones
+        if self.original_object.name == self.object_name and self.original_mode == self.mode:
+            self.do_nothing = True
+            return
+
+        # Switch to the specified object and mode if they don't match
+        bpy.context.view_layer.objects.active = bpy.data.objects[self.object_name]
+        bpy.ops.object.mode_set(mode=self.mode)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self.do_nothing:
+            return  # Do nothing if already in the correct state
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        # Revert to the original active object
+        bpy.context.view_layer.objects.active = self.original_object
+
+        # Revert to the original mode
+        bpy.ops.object.mode_set(mode=self.original_mode)
+

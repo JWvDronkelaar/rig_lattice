@@ -2,6 +2,8 @@ import math, mathutils
 
 import bpy
 
+from .constants import Widget
+
 
 # Function to scale coordinates around a given origin and along a specific axis
 def scale_around_origin(coords, origin=mathutils.Vector((0,0,0)), axis="X", scale=1.0):
@@ -91,8 +93,9 @@ def create_cube_widget(name, size=1.0):
     faces = []
     
     # Create a new mesh and object
-    mesh = bpy.data.meshes.new(name)
-    obj = bpy.data.objects.new(name, mesh)
+    widget_name = Widget.CUBE
+    mesh = bpy.data.meshes.new(widget_name)
+    obj = bpy.data.objects.new(widget_name, mesh)
 
     # Link the object to the active collection
     bpy.context.collection.objects.link(obj)
@@ -121,8 +124,9 @@ def create_rectangle_widget(name, size=mathutils.Vector((1.0, 1.0)), orientation
     faces = []
 
     # Create a new mesh and object
-    mesh = bpy.data.meshes.new(name)
-    obj = bpy.data.objects.new(name, mesh)
+    widget_name = Widget.SQUARE
+    mesh = bpy.data.meshes.new(widget_name)
+    obj = bpy.data.objects.new(widget_name, mesh)
 
     # Link the object to the active collection
     bpy.context.collection.objects.link(obj)
@@ -136,8 +140,9 @@ def create_rectangle_widget(name, size=mathutils.Vector((1.0, 1.0)), orientation
 
 def create_circle_widget(name, radius=1.0, resolution=16, orientation='Z'):
     # Create a new mesh and object
-    mesh = bpy.data.meshes.new(name)
-    obj = bpy.data.objects.new(name, mesh)
+    widget_name = Widget.CIRCLE
+    mesh = bpy.data.meshes.new(widget_name)
+    obj = bpy.data.objects.new(widget_name, mesh)
 
     # Link the object to the active collection
     bpy.context.collection.objects.link(obj)
@@ -153,8 +158,9 @@ def create_circle_widget(name, radius=1.0, resolution=16, orientation='Z'):
 
 def create_sphere_widget(name, radius=1.0, resolution=16):
     # Create a new mesh and object
-    mesh = bpy.data.meshes.new(name)
-    obj = bpy.data.objects.new(name, mesh)
+    widget_name = Widget.SPHERE
+    mesh = bpy.data.meshes.new(widget_name)
+    obj = bpy.data.objects.new(widget_name, mesh)
 
     # Link the object to the active collection
     bpy.context.collection.objects.link(obj)

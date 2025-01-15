@@ -14,18 +14,16 @@
 import bpy
 import mathutils
 
-from .functions import align_bone_roll, assign_bone_to_collection, get_bone_tail, setup_bone_collections, setup_widgets
-from .armature_functions import assign_bone_shape_to_list, create_bone
+from .constants import ArmatureCollection, Widget
+
+from .functions import setup_bone_collections, setup_widgets
+from .armature_functions import align_bone_roll, assign_bone_shape_to_list, assign_bone_to_collection, assign_bones_to_collection, assign_transform_constraint, create_bone, duplicate_bone, get_bone_tail
 
 
 def main(context):
     bone_length = 0.3
     bone_prefix = "eye_lat"
     lat_point_count = 0
-    wgt_sphere = "LAT_WGT_sphere"
-    wgt_circle = "LAT_WGT_circle"
-    wgt_square = "LAT_WGT_square"
-    wgt_cube = "LAT_WGT_cube"
 
     # TODO: turn into an option
     align_with_lattice = True
@@ -46,7 +44,7 @@ def main(context):
     bpy.ops.object.mode_set(mode='EDIT')
 
     # Create root bone at lattice origin
-    bone_name = f"{bone_prefix}_root"
+    def_bone_name = f"{bone_prefix}_root"
     lattice_world_location = lattice_matrix_world @ lattice.location
     root_offset = lattice.scale.z / 2
     bone_head = lattice_world_location + (lattice_matrix_world @ mathutils.Vector((0, 0, -1))).normalized() * root_offset
@@ -54,14 +52,16 @@ def main(context):
 
     bone_tail = get_bone_tail(align_with_lattice, lattice_matrix_world, bone_head, bone_tail_offset)
 
-    root_bone = create_bone(armature, bone_name, bone_head, bone_tail)
+    root_bone = create_bone(armature, def_bone_name, bone_head, bone_tail)
     align_bone_roll(align_with_lattice, lattice_matrix_world, root_bone)
     root_bone.use_deform = False
     root_bone_name = root_bone.name
 
     # Create bones at each vertex of the lattice
     def_bones = []
-    parent_bones = []
+    master_bones = []
+    control_bones = []
+
     for group_index in range(0, lat_point_count, lat_group_count):
         print(f"Main loop iteration starting at group_index {group_index}")
         global_index = group_index
@@ -74,56 +74,73 @@ def main(context):
             group_center += lattice_matrix_world @ local_point.co
         group_center = group_center / lat_group_count
         
-        bone_name = f"parent_{bone_prefix}_{group_index}"
+        def_bone_name = f"parent_{bone_prefix}_{group_index}"
         bone_head = group_center
         bone_tail_offset = mathutils.Vector((0, bone_length * 2, 0))
         bone_tail = get_bone_tail(align_with_lattice, lattice_matrix_world, bone_head, bone_tail_offset)
 
-        group_parent_bone = create_bone(armature, bone_name, bone_head, bone_tail)
+        group_parent_bone = create_bone(armature, def_bone_name, bone_head, bone_tail)
         align_bone_roll(align_with_lattice, lattice_matrix_world, group_parent_bone)
-        parent_bones.append(group_parent_bone.name)
+        master_bones.append(group_parent_bone.name)
         group_parent_bone.use_deform = False
         group_parent_bone.parent = root_bone
         
         for local_index in range(group_index, min(group_index + lat_group_count, lat_point_count)):
             point = lattice.data.points[local_index]
 
-            # Create a new bone for each vertex
-            bone_name = f"{bone_prefix}_{global_index}"
+            # Create deform bone
+            def_bone_name = f"DEF-{bone_prefix}_{global_index}"
             bone_head = lattice.matrix_world @ point.co
             bone_tail_offset = mathutils.Vector((0, bone_length, 0))
             bone_tail = get_bone_tail(align_with_lattice, lattice_matrix_world, bone_head, bone_tail_offset)
 
-            # Create a bone in edit mode
-            bone = create_bone(armature, bone_name, bone_head, bone_tail)
-            align_bone_roll(align_with_lattice, lattice_matrix_world, bone)
-            bone.parent = group_parent_bone
-            def_bones.append(bone_name)
+            # Create a deform bone in edit mode
+            def_bone = create_bone(armature, def_bone_name, bone_head, bone_tail)
+            align_bone_roll(align_with_lattice, lattice_matrix_world, def_bone)
+            def_bone.parent = root_bone
+            def_bones.append(def_bone_name)
+
+            # create control bone for deformation bone and setup constraints
+            control_bone_name = f"{bone_prefix}_{global_index}"
+            control_bone = duplicate_bone(armature, def_bone_name, control_bone_name, keep_parent=False)
+            control_bone.parent = group_parent_bone
+            control_bones.append(control_bone_name)
+
+            # assign_transform_constraint(armature, def_bone_name, control_bone_name)
+
             global_index += 1
+
+    
+    bpy.ops.object.mode_set(mode='POSE')
+    for index, def_bone in enumerate(def_bones):
+        assign_transform_constraint(armature, def_bone, control_bones[index])
+    
+    # Create widget collection and widget shapes
+    setup_widgets()
+
+    # assign bone shapes
+    square_custom_scale = mathutils.Vector((lattice.scale.x, lattice.scale.y, 1))
+    assign_bone_shape_to_list(armature, Widget.SPHERE, control_bones)
+    assign_bone_shape_to_list(armature, Widget.SQUARE, master_bones, custom_scale=square_custom_scale)
+    assign_bone_shape_to_list(armature, Widget.CUBE, [root_bone_name,])
+
+    # assign bones to collections
+    setup_bone_collections(armature)
+    assign_bones_to_collection(armature, def_bones, ArmatureCollection.DEFORM)
+    assign_bones_to_collection(armature, control_bones + master_bones + [root_bone_name,], ArmatureCollection.LATTICE)
+
+    armature.update_tag()
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    depsgraph.update()
 
     bpy.ops.object.mode_set(mode='OBJECT')
     bpy.context.view_layer.objects.active = lattice
 
     # Add vertex groups and assign weights for each bone
-    for vertex_index, bone_name in enumerate(def_bones):
-        print(f"vertex_index: '{vertex_index}', bone_name: '{bone_name}'.")
-        vertex_group = lattice.vertex_groups.new(name=bone_name)
+    for vertex_index, def_bone_name in enumerate(def_bones):
+        print(f"vertex_index: '{vertex_index}', bone_name: '{def_bone_name}'.")
+        vertex_group = lattice.vertex_groups.new(name=def_bone_name)
         vertex_group.add([vertex_index], 1.0, 'REPLACE')
-
-    # Create widget collection and widget shapes
-    setup_widgets()
-
-    # assign bone shapes
-    assign_bone_shape_to_list(armature, wgt_sphere, def_bones)
-    assign_bone_shape_to_list(armature, wgt_square, parent_bones)
-    assign_bone_shape_to_list(armature, wgt_cube, [root_bone_name,])
-
-    # Assign to collections
-    setup_bone_collections(armature, "my_lattice")
-
-    # assign bones to collections
-    for bone_name in def_bones:
-        assign_bone_to_collection(armature, bone_name, "DEF")
 
     # Add armature modifier to the lattice
     modifier = lattice.modifiers.new(name="Armature", type='ARMATURE')

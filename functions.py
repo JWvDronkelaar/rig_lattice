@@ -69,40 +69,29 @@ def setup_bone_collections(armature, custom_collection_names=None):
             bone_collection.is_visible = False
 
 
-class TemporaryObjectMode:
-    def __init__(self, object_name, mode):
-        self.object_name = object_name
-        self.mode = mode
-        self.original_object = None
-        self.original_mode = None
-        self.do_nothing = False
+def find_objects_that_reference_lattice(lattice_name):
+    # Get the lattice object
+    target_lattice = bpy.data.objects.get(lattice_name)
 
-    def __enter__(self):
-        # Store the original active object and mode
-        self.original_object = bpy.context.active_object
-        self.original_mode = bpy.context.mode
+    if target_lattice:
+        # Generator to filter mesh objects with the desired lattice modifier
+        meshes_with_lattice = (
+            obj.name for obj in bpy.data.objects if obj.type == 'MESH' and any(
+                mod.type == 'LATTICE' and mod.object == target_lattice for mod in obj.modifiers
+            )
+        )
 
-        if self.original_mode.startswith('EDIT'):
-            self.original_mode = 'EDIT'
+        # Convert generator to a list and check if any meshes were found
+        meshes_with_lattice_list = list(meshes_with_lattice)
 
-        # Check if the current active object and mode already match the specified ones
-        if self.original_object.name == self.object_name and self.original_mode == self.mode:
-            self.do_nothing = True
-            return
+        # Print the names of the mesh objects with the lattice modifier
+        if meshes_with_lattice_list:
+            print("Mesh objects with Lattice modifier referencing 'my_lattice':")
+            for object_name in meshes_with_lattice_list:
+                print(object_name)
+        else:
+            print("No mesh objects found with a Lattice modifier referencing 'my_lattice'.")
+    else:
+        print(f"Lattice object named '{lattice_name}' not found.")
 
-        # Switch to the specified object and mode if they don't match
-        bpy.context.view_layer.objects.active = bpy.data.objects[self.object_name]
-        bpy.ops.object.mode_set(mode=self.mode)
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if self.do_nothing:
-            return  # Do nothing if already in the correct state
-
-        bpy.ops.object.mode_set(mode='OBJECT')
-
-        # Revert to the original active object
-        bpy.context.view_layer.objects.active = self.original_object
-
-        # Revert to the original mode
-        bpy.ops.object.mode_set(mode=self.original_mode)
-
+    return meshes_with_lattice_list

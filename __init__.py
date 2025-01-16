@@ -16,8 +16,8 @@ import mathutils
 
 from .constants import ArmatureCollection, Widget
 
-from .functions import setup_bone_collections, setup_widgets
-from .armature_functions import align_bone_roll, assign_bone_shape_to_list, assign_bone_to_collection, assign_bones_to_collection, assign_transform_constraint, create_bone, duplicate_bone, get_bone_tail
+from .functions import find_objects_that_reference_lattice, setup_bone_collections, setup_widgets
+from .armature_functions import align_bone_roll, assign_bone_shape_to_list, assign_bones_to_collection, assign_transform_constraint, create_bone, duplicate_bone, get_bone_tail
 
 
 def main(context):
@@ -145,6 +145,15 @@ def main(context):
     # Add armature modifier to the lattice
     modifier = lattice.modifiers.new(name="Armature", type='ARMATURE')
     modifier.object = armature
+
+    # Parent lattice and meshes referencing the lattice to the armature
+    lattice.parent = armature
+    referenced_mesh_objects = find_objects_that_reference_lattice(lattice_name)
+    for mesh_object_name in referenced_mesh_objects:
+        mesh_object = bpy.data.objects.get(mesh_object_name)
+        mesh_object.parent = armature
+
+    lattice.hide_viewport = True
 
     # Optionally, go back to Object mode after everything is set
     bpy.ops.object.mode_set(mode='OBJECT')

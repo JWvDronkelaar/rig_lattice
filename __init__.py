@@ -45,12 +45,13 @@ def main(context):
 
     # Create root bone at lattice origin
     def_bone_name = f"{bone_prefix}_root"
-    lattice_world_location = lattice_matrix_world @ lattice.location
+    lattice_world_location = lattice_matrix_world.translation
     root_offset = lattice.scale.z / 2
-    bone_head = lattice_world_location + (lattice_matrix_world @ mathutils.Vector((0, 0, -1))).normalized() * root_offset
-    bone_tail_offset = mathutils.Vector((0, bone_length * 3, 0))
+    bone_head = lattice_world_location
+    bone_head = lattice_world_location + (lattice_matrix_world.to_3x3() @ mathutils.Vector((0, 0, -1))).normalized() * root_offset
+    local_tail_offset = mathutils.Vector((0, bone_length * 3, 0))
 
-    bone_tail = get_bone_tail(align_with_lattice, lattice_matrix_world, bone_head, bone_tail_offset)
+    bone_tail = get_bone_tail(align_with_lattice, lattice_matrix_world, bone_head, local_tail_offset)
 
     root_bone = create_bone(armature, def_bone_name, bone_head, bone_tail)
     align_bone_roll(align_with_lattice, lattice_matrix_world, root_bone)
@@ -153,9 +154,11 @@ def main(context):
         mesh_object = bpy.data.objects.get(mesh_object_name)
         mesh_object.parent = armature
 
+    # TODO: hide globally instead of per viewport
     lattice.hide_viewport = True
 
-    # Optionally, go back to Object mode after everything is set
+    # Set armature as active object and go to object mode
+    bpy.context.view_layer.objects.active = bpy.data.objects.get(armature_name)
     bpy.ops.object.mode_set(mode='OBJECT')
 
     print("Bones have been created and weighted to the lattice vertices.")

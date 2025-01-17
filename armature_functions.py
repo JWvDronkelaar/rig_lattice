@@ -91,7 +91,7 @@ def assign_bones_to_collection(armature, bone_names, collection_name):
 
 def get_bone_tail(align_with_lattice, lattice_matrix_world, bone_head, bone_tail_offset):
     if align_with_lattice:
-        return bone_head + lattice_matrix_world @ bone_tail_offset
+        return bone_head + lattice_matrix_world.to_3x3() @ bone_tail_offset
     else:
         return bone_head + bone_tail_offset
 

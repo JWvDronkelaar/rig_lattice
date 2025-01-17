@@ -12,6 +12,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import bpy
+from bpy.types import Operator
+from bpy.props import BoolProperty
 import mathutils
 
 from .constants import ArmatureCollection, Widget
@@ -20,13 +22,10 @@ from .functions import find_objects_that_reference_lattice, setup_bone_collectio
 from .armature_functions import align_bone_roll, assign_bone_shape_to_list, assign_bones_to_collection, assign_transform_constraint, create_bone, duplicate_bone, get_bone_tail
 
 
-def main(context):
+def main(context, align_with_lattice):
     bone_length = 0.3
     bone_prefix = "eye_lat"
     lat_point_count = 0
-
-    # TODO: turn into an option
-    align_with_lattice = True
 
     lattice = bpy.context.active_object
     lattice_name = lattice.name
@@ -134,8 +133,8 @@ def main(context):
     depsgraph = bpy.context.evaluated_depsgraph_get()
     depsgraph.update()
 
-    bpy.ops.object.mode_set(mode='OBJECT')
     bpy.context.view_layer.objects.active = lattice
+    bpy.ops.object.mode_set(mode='OBJECT')
 
     # Add vertex groups and assign weights for each bone
     for vertex_index, def_bone_name in enumerate(def_bones):
@@ -154,21 +153,27 @@ def main(context):
         mesh_object = bpy.data.objects.get(mesh_object_name)
         mesh_object.parent = armature
 
-    # TODO: hide globally instead of per viewport
-    lattice.hide_viewport = True
-
-    # Set armature as active object and go to object mode
-    bpy.context.view_layer.objects.active = bpy.data.objects.get(armature_name)
+    # Restore starting conditions so the redo panel works
+    bpy.ops.object.select_all(action='DESELECT')
+    bpy.data.objects[armature_name].select_set(True)
+    bpy.data.objects[lattice_name].select_set(True)
+    bpy.context.view_layer.objects.active = bpy.data.objects[lattice_name]
     bpy.ops.object.mode_set(mode='OBJECT')
 
     print("Bones have been created and weighted to the lattice vertices.")
 
 
-class ARMATURE_OT_rig_lattice(bpy.types.Operator):
+class ARMATURE_OT_rig_lattice(Operator):
     """Tooltip"""
     bl_idname = "armature.rig_lattice"
     bl_label = "Rig lattice so it is controlled with bones"
     bl_options = {'REGISTER', 'UNDO'}
+
+    align_with_lattice: bpy.props.BoolProperty(
+        name="Align with lattice",
+        description="Aligns the bones with the lattices orientation",
+        default=False
+    )
 
     @classmethod
     def poll(cls, context):
@@ -185,16 +190,23 @@ class ARMATURE_OT_rig_lattice(bpy.types.Operator):
         return True
 
     def execute(self, context):
-        main(context)
+        align_with_lattice = self.align_with_lattice
+        
+        main(context, align_with_lattice)
         return {'FINISHED'}
 
+def rig_lattice_button(self, context):
+    self.layout.operator(
+        ARMATURE_OT_rig_lattice.bl_idname,
+        text="Rig Lattice")
 
 def register():
     bpy.utils.register_class(ARMATURE_OT_rig_lattice)
+    bpy.types.VIEW3D_MT_object.append(rig_lattice_button)
 
 def unregister():
     bpy.utils.unregister_class(ARMATURE_OT_rig_lattice)
-
+    bpy.types.VIEW3D_MT_object.remove(rig_lattice_button)
 
 if __name__ == "__main__":
     try:

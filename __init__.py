@@ -16,7 +16,7 @@ from bpy.types import Operator
 from bpy.props import BoolProperty
 import mathutils
 
-from .constants import ArmatureCollection, Widget
+from .constants import Widget
 
 from .functions import find_objects_that_reference_lattice, setup_bone_collections, setup_widgets
 from .armature_functions import align_bone_roll, assign_bone_shape_to_list, assign_bones_to_collection, assign_transform_constraint, assign_copy_scale_constraint, create_bone, duplicate_bone, get_bone_tail
@@ -119,12 +119,15 @@ def main(context, align_with_lattice, root_to_bottom, bone_name, def_prefix, def
 
     # assign bone shapes
     square_custom_scale = mathutils.Vector((lattice.scale.x, lattice.scale.y, 1))
+    align_with_object_name = lattice_name if not align_with_lattice else None
     assign_bone_shape_to_list(armature, Widget.SPHERE, control_bones)
-    assign_bone_shape_to_list(armature, Widget.SQUARE, master_bones, custom_scale=square_custom_scale)
+    assign_bone_shape_to_list(armature, Widget.SQUARE, master_bones, 
+                              custom_scale=square_custom_scale,
+                              align_with_object_name=align_with_object_name)
     assign_bone_shape_to_list(armature, Widget.CUBE, [root_bone_name,])
 
     # assign bones to collections
-    setup_bone_collections(armature, [def_collection_name, lattice_collection_name,])
+    setup_bone_collections(armature, [def_collection_name, lattice_collection_name,], collections_to_hide=[def_collection_name,])
     assign_bones_to_collection(armature, def_bones, def_collection_name)
     assign_bones_to_collection(armature, control_bones + master_bones + [root_bone_name,], lattice_collection_name)
 
@@ -171,7 +174,7 @@ class ARMATURE_OT_rig_lattice(Operator):
     align_with_lattice: bpy.props.BoolProperty(
         name="Align with lattice",
         description="Aligns the bones with the lattices orientation",
-        default=False
+        default=True
     )
     root_to_bottom: bpy.props.BoolProperty(
         name="Root to bottom",

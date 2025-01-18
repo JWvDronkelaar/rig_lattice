@@ -1,7 +1,6 @@
 
 import bpy
 
-from .constants import ArmatureCollection
 from .widget_functions import create_cube_widget, create_sphere_widget, create_circle_widget, create_rectangle_widget
 
 
@@ -55,13 +54,13 @@ def setup_widgets():
     set_active_collection(initial_collection)
 
 
-def setup_bone_collections(armature, collection_names):
+def setup_bone_collections(armature, collection_names, collections_to_hide=[]):
     for collection_name in collection_names:
         if not collection_name in [col.name for col in armature.data.collections]:
             bone_collection = armature.data.collections.new(collection_name)
 
-        if collection_name == ArmatureCollection.DEFORM.value:
-            bone_collection.is_visible = False
+            if collection_name in collections_to_hide:
+                bone_collection.is_visible = False
 
 
 def find_objects_that_reference_lattice(lattice_name):

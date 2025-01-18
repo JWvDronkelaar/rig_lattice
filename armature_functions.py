@@ -1,8 +1,6 @@
 import bpy
 import mathutils
 
-# from .functions import TemporaryObjectMode
-
 def assign_bone_shape(armature, bone_name, widget_name):
     custom_shape = bpy.data.objects.get(widget_name)
 
@@ -34,7 +32,7 @@ def assign_bone_shape(armature, bone_name, widget_name):
         print("Ensure that the armature and custom shape object exist and are correctly named.")
 
 
-def assign_bone_shape_to_list(armature, widget_name, bone_names, custom_scale=None):
+def assign_bone_shape_to_list(armature, widget_name, bone_names, custom_scale=None, align_with_object_name=None):
     custom_shape = bpy.data.objects.get(widget_name)
 
     if armature and custom_shape and armature.type == 'ARMATURE':
@@ -49,6 +47,9 @@ def assign_bone_shape_to_list(armature, widget_name, bone_names, custom_scale=No
             if custom_scale:
                 pose_bone.custom_shape_scale_xyz = custom_scale
             
+            if align_with_object_name:
+                pose_bone.custom_shape_rotation_euler = align_bone_shape_to_object(armature, pose_bone.name, align_with_object_name)
+
             # Prevent scaling by bone size
             pose_bone.use_custom_shape_bone_size = False  
             
@@ -99,6 +100,71 @@ def get_bone_tail(align_with_lattice, lattice_matrix_world, bone_head, bone_tail
 def align_bone_roll(align_with_lattice, lattice_matrix_world, bone):
         if align_with_lattice:
             bone.align_roll(lattice_matrix_world.to_quaternion() @ mathutils.Vector((0, 0, 1)))
+
+
+def align_bone_shape_to_world(armature, bone_name):
+    # Get the pose bone
+    pose_bone = armature.pose.bones.get(bone_name)
+    if not pose_bone:
+        print(f"Bone '{bone_name}' not found in armature.")
+        return
+
+    # Get the bone shape object
+    bone_shape = pose_bone.custom_shape
+    if not bone_shape:
+        print(f"Bone '{bone_name}' does not have a custom shape.")
+        return
+
+    # Get the matrix to align the bone shape to world space
+    bone_matrix_world = armature.matrix_world @ pose_bone.matrix
+    bone_shape_matrix_world = bone_shape.matrix_world
+
+    # Calculate the required rotation to align the bone shape to world space
+    target_matrix = bone_matrix_world.inverted() @ bone_shape_matrix_world
+
+    # Convert the target matrix to Euler rotation
+    return target_matrix.to_euler()
+
+
+def align_bone_shape_to_object(armature_obj, bone_name, target_obj_name):
+    # Ensure the provided object is an armature
+    if armature_obj.type != 'ARMATURE':
+        print("The provided object is not an armature.")
+        return
+
+    # Get the target object
+    target_obj = bpy.data.objects.get(target_obj_name)
+    if not target_obj:
+        print(f"Target object '{target_obj_name}' not found.")
+        return
+
+    # Enter pose mode
+    bpy.context.view_layer.objects.active = armature_obj
+    bpy.ops.object.mode_set(mode='POSE')
+
+    # Get the pose bone
+    pose_bone = armature_obj.pose.bones.get(bone_name)
+    if not pose_bone:
+        print(f"Bone '{bone_name}' not found in armature.")
+        return
+
+    # Get the bone shape object
+    bone_shape = pose_bone.custom_shape
+    if not bone_shape:
+        print(f"Bone '{bone_name}' does not have a custom shape.")
+        return
+
+    # Calculate the matrix to align the bone shape to the target object
+    # bone_matrix_world: Bone's transformation in world space
+    # target_matrix_world: Target object's transformation in world space
+    bone_matrix_world = armature_obj.matrix_world @ pose_bone.matrix
+    target_matrix_world = target_obj.matrix_world
+
+    # Calculate the rotation matrix required to align the bone shape to the target object
+    # We need to transform the bone shape to align with the target object
+    target_to_bone_matrix = bone_matrix_world @ bone_shape.matrix_basis.inverted() @ target_matrix_world
+    return target_to_bone_matrix.to_euler()
+
 
 # requires armature as active object and edit mode
 def duplicate_bone(armature, bone_name, new_name, keep_parent=False):

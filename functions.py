@@ -55,12 +55,7 @@ def setup_widgets():
     set_active_collection(initial_collection)
 
 
-def setup_bone_collections(armature, custom_collection_names=None):
-    # Default bone collection names
-    collection_names = [collection.value for collection in ArmatureCollection]
-    if custom_collection_names:
-        collection_names.extend(custom_collection_names)    
-
+def setup_bone_collections(armature, collection_names):
     for collection_name in collection_names:
         if not collection_name in [col.name for col in armature.data.collections]:
             bone_collection = armature.data.collections.new(collection_name)

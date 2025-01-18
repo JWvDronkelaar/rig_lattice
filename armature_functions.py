@@ -118,3 +118,10 @@ def assign_transform_constraint(armature, owner_bone, target_bone_name):
     constraint = owner_bone.constraints.new('COPY_TRANSFORMS')
     constraint.target = armature
     constraint.subtarget = target_bone_name
+
+
+def assign_copy_scale_constraint(armature, owner_bone, target_bone_name):
+    owner_bone = armature.pose.bones[owner_bone]
+    constraint = owner_bone.constraints.new('COPY_SCALE')
+    constraint.target = armature
+    constraint.subtarget = target_bone_name

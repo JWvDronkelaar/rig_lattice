@@ -165,7 +165,7 @@ def main(context, align_with_lattice, root_to_bottom, bone_name, def_prefix, def
 class ARMATURE_OT_rig_lattice(Operator):
     """Tooltip"""
     bl_idname = "armature.rig_lattice"
-    bl_label = "Rig lattice so it is controlled with bones"
+    bl_label = "Rig lattice"
     bl_options = {'REGISTER', 'UNDO'}
 
     align_with_lattice: bpy.props.BoolProperty(
@@ -185,21 +185,44 @@ class ARMATURE_OT_rig_lattice(Operator):
         default="lattice"
     )
     def_bones_prefix: bpy.props.StringProperty(
-        name="Deform Bone Prefix",
+        name="Deform Prefix",
         description="The prefix for the deform bones",
         default="DEF"
     )
 
     def_collection_name: bpy.props.StringProperty(
-        name="Deform Collection Name",
+        name="Deform Collection",
         description="The name of the collection for deform bones",
         default="Deform Bones"
     )
     lattice_collection_name: bpy.props.StringProperty(
-        name="Lattice Collection Name",
+        name="Lattice Collection",
         description="The name of the collection for lattice bones",
         default="Lattice"
     )
+
+    # Use invoke to set a default value from the context
+    def invoke(self, context, event):
+        self.bone_name = [obj for obj in bpy.context.selected_objects if obj.type == "LATTICE"][0].name
+        return self.execute(context)
+
+
+    def draw(self, context):
+            layout = self.layout
+            layout.use_property_split = True
+            layout.use_property_decorate = True
+
+            layout.prop(self, "align_with_lattice")
+            layout.prop(self, "root_to_bottom")
+
+            layout.separator()
+            layout.prop(self, "bone_name")
+            layout.prop(self, "def_bones_prefix")
+
+            layout.separator()
+            layout.prop(self, "def_collection_name")
+            layout.prop(self, "lattice_collection_name")
+
 
     @classmethod
     def poll(cls, context):

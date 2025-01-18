@@ -113,8 +113,8 @@ def duplicate_bone(armature, bone_name, new_name, keep_parent=False):
     return new_bone
 
 # requires armature as active object and pose mode
-def assign_transform_constraint(armature, owner_bone, target_bone):
+def assign_transform_constraint(armature, owner_bone, target_bone_name):
     owner_bone = armature.pose.bones[owner_bone]
     constraint = owner_bone.constraints.new('COPY_TRANSFORMS')
     constraint.target = armature
-    constraint.subtarget = target_bone
+    constraint.subtarget = target_bone_name

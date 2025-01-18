@@ -27,7 +27,7 @@ def main(context, align_with_lattice):
     bone_prefix = "eye_lat"
     lat_point_count = 0
 
-    lattice = bpy.context.active_object
+    lattice = [obj for obj in bpy.context.selected_objects if obj.type == "LATTICE"][0]
     lattice_name = lattice.name
     
     armature = [obj for obj in bpy.context.selected_objects if obj.type == "ARMATURE"][0]
@@ -157,7 +157,7 @@ def main(context, align_with_lattice):
     bpy.ops.object.select_all(action='DESELECT')
     bpy.data.objects[armature_name].select_set(True)
     bpy.data.objects[lattice_name].select_set(True)
-    bpy.context.view_layer.objects.active = bpy.data.objects[lattice_name]
+    bpy.context.view_layer.objects.active = bpy.data.objects[armature_name]
     bpy.ops.object.mode_set(mode='OBJECT')
 
     print("Bones have been created and weighted to the lattice vertices.")
@@ -185,7 +185,7 @@ class ARMATURE_OT_rig_lattice(Operator):
         if not len([obj for obj in bpy.context.selected_objects if obj.type == 'LATTICE']) == selected_objects_amount - 1:
             return False
         if active_object := bpy.context.active_object:
-            if not (active_object.type == 'LATTICE'):
+            if not (active_object.type == 'ARMATURE'):
                 return False
         return True
 
